@@ -46,8 +46,6 @@ ci_json() {
 };
 
 s3_put_archive() {
-  echo "START PUT: $CODEBUILD_S3_BUCKET/$CODEBUILD_S3_ARCHIVE_KEY"
-
   aws s3api put-object \
   --body ./code.zip \
   --bucket $CODEBUILD_S3_BUCKET \
@@ -55,6 +53,7 @@ s3_put_archive() {
   --output text --query 'VersionId'
 };
 
+echo "START PUT: $CODEBUILD_S3_BUCKET/$CODEBUILD_S3_ARCHIVE_KEY"
 version_id=$(s3_put_archive);
 echo "S3 Object Version: $version_id";
 
