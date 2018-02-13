@@ -9,57 +9,113 @@ Integrate AWS CodeBuild and Pipelines with git services
 
 **Image**: [Docker Hub][dockerhub-url]
 
-## CodeBuild
+## AWS CodeBuild
 
 This image will create a zip archive of the project, send it to a `CODEBUILD_S3_BUCKET`/`CODEBUILD_S3_KEY` location and start a new AWS CodeBuild build process.  The build process will be tied to the version of the archive in S3.
 
-Bitbucket Pipelines will wait for AWS CodeBuild to finish and respectively retrun success or failure based on the outcome of the build.
+Bitbucket|GitLab pipelines will wait for AWS CodeBuild to finish and return success or failure based on the outcome of the build.
 
-### bitbucket-pipelines.yml
+## CI environment variables export
+CI-specific environment variables are exported to the AWS Codebuild runner:
+
+### Bitbucket pipeline
+All environment variables prefixed by `BITBUCKET_` are exported.
+The full list of environment variables set by Gitlab pipeline is available at https://confluence.atlassian.com/bitbucket/environment-variables-794502608.html
+
+The user can export extra environment variables by prefixing them by `BITBUCKET_`.
+
+### GITLAB-CI
+All environment variables prefixed by `CI_|GITLAB_` are exported.
+The full list of environment variables set by Gitlab pipeline is available at https://docs.gitlab.com/ce/ci/variables/README.html
+
+The user can export extra environment variables by prefixing them by `CI_` or `GITLAB_`.
+
+### Bitbucket pipeline integration (`bitbucket-pipelines.yml`)
 ```
-image: sungardas/bitbucket-awscode
+image: ebarault/codebuild-git-integration:2.0
 pipelines:
   default:
     - step:
         script:
             - |
-              AWS_DEFAULT_REGION=us-east-1 \
+              AWS_DEFAULT_REGION=eu-west-1 \
+              CODEBUILD_PROJECT_NAME=my-project-name \
               CODEBUILD_S3_BUCKET=my-s3-bucket-name \
               CODEBUILD_S3_ARCHIVE_KEY=codebuild/project-name/code.zip \
-              CODEBUILD_S3_MAP_PATH=codebuild/project-name/bitbucketmap \
+              CODEBUILD_S3_RESULT_PATH=codebuild/project-name/codebuild-results \
               CODEBUILD_START_JSON_FILE=cicd/buildspec/start_build.json \
               start-build
 
 ```
 
+### GitLab-CI integration (`.gitlab-ci.yml`)
+```
+image: ebarault/codebuild-git-integration:2.0
+stages:
+    - build
+
+codebuild_start:
+    tags:
+        - docker
+    stage: build
+    script:
+        - |
+            AWS_DEFAULT_REGION=eu-west-1 \
+            CODEBUILD_PROJECT_NAME=my-project-name \
+            CODEBUILD_S3_BUCKET=my-s3-bucket-name \
+            CODEBUILD_S3_ARCHIVE_KEY=codebuild/project-name/code.zip \
+            CODEBUILD_S3_RESULT_PATH=codebuild/project-name/codebuild-results \
+            CODEBUILD_START_JSON_FILE=cicd/buildspec/start_build.json \
+            start-build
+```
 
 ## AWS Pipeline
 
-Once a successful build has completed an AWS Pipeline can be executed as a Bitbucket Custom Pipeline from the respective commit. The artifact(s) produced by AWS CodeBuild will be fetched.  If the artificats are not already in a zip archive they will be put in one and uploaded to the pipeline bucket and key path.
+Once a successful build has completed an AWS codepipeline can be executed as a Bitbucket Custom Pipeline from the respective commit. The artifact(s) produced by AWS CodeBuild will be fetched.  If the artifacts are not already in a zip archive they will be put in one and uploaded to the pipeline bucket and key path.
 
-### bitbucket-pipelines.yml
+The pipeline needs to be configured to run automatically when new files are loaded on the selected codepipeline S3 bucket.
+
+### Bitbucket pipeline integration (`bitbucket-pipelines.yml`)
 ```
-image: sungardas/bitbucket-awscode
+image: ebarault/codebuild-git-integration:2.0
 pipelines:
   custom:
     pipeline_release:
       - step:
           script:
-            - env
             - |
               AWS_DEFAULT_REGION=us-east-1 \
               CODEBUILD_S3_BUCKET=my-s3-bucket-name \
-              CODEBUILD_S3_MAP_PATH=codebuild/project-name/bitbucketmap \
+              CODEBUILD_S3_RESULT_PATH=codebuild/project-name/codebuild-results \
               CODEPIPELINE_S3_BUCKET=my-pipeline-s3-bucket \
               CODEPIPELINE_S3_ARCHIVE_KEY=codepipeline/project-name/pipeline.zip \
-              codepipeline
+              push-to-pipeline
 ```
 
+### GitLab-CI integration (`.gitlab-ci.yml`)
+```
+image: ebarault/codebuild-git-integration:2.0
+stages:
+    - deploy
+
+pipeline_release:
+    tags:
+        - docker
+    stage: deploy
+    script:
+        - |
+          AWS_DEFAULT_REGION=us-east-1 \
+          CODEBUILD_S3_BUCKET=my-s3-bucket-name \
+          CODEBUILD_S3_RESULT_PATH=codebuild/project-name/codebuild-results \
+          CODEPIPELINE_S3_BUCKET=my-pipeline-s3-bucket \
+          CODEPIPELINE_S3_ARCHIVE_KEY=codepipeline/project-name/pipeline.zip \
+          push-to-pipeline
+```
 
 
 ## Environment Variables
 
-It is recommened keep all configuraiton in `bitbucket-pipelines.yml` except for `AWS_ACCESS_KEY_ID` and the `AWS_SECRET_ACCESS_KEY`. That will ensure a commit is always associated with the corresponding S3 buckets and paths.
+It is recommended to keep all configuration in `bitbucket-pipelines.yml` | `.gitlab-ci.yml` files except for `AWS_ACCESS_KEY_ID` and the `AWS_SECRET_ACCESS_KEY`. That will ensure a commit is always associated with the corresponding S3 buckets and paths.
 
 ### `AWS_ACCESS_KEY_ID`
 **required**
@@ -92,42 +148,89 @@ The S3 key AWS CodeBuild will use to pull the code archive
 ### `CODEBUILD_START_JSON_FILE`
 **optional**
 
-Full path to a JSON file within the project that will be merged and added to the `start-build` CodeBuild command.
+Full path to a JSON file within the project that will be merged with options provided in environment variables and added to the `start-build` CodeBuild command.
 
 **Example**
 `cicd/buildspec/start_build.json`
+
+The expected format for the `start_build.json` file matches the cli skeleton generated by the AWS cli for the codebuild `start-build` command
+See AWS documentation: https://docs.aws.amazon.com/cli/latest/reference/codebuild/start-build.html
+
+```sh
+aws codebuild start-build --generate-cli-skeleton
+```
+```json
+{
+    "projectName": "",
+    "sourceVersion": "",
+    "artifactsOverride": {
+        "type": "CODEPIPELINE",
+        "location": "",
+        "path": "",
+        "namespaceType": "NONE",
+        "name": "",
+        "packaging": "NONE"
+    },
+    "environmentVariablesOverride": [
+        {
+            "name": "",
+            "value": "",
+            "type": "PARAMETER_STORE"
+        }
+    ],
+    "buildspecOverride": "",
+    "timeoutInMinutesOverride": 0
+}
+```
 
 ### `CODEBUILD_PROJECT_NAME`
 **optional**
 
 The name of the AWS CodeBuild Project. If not set here, this must be defined in `CODEBUILD_START_JSON_FILE`
 
-### `CODEBUILD_S3_MAP_PATH`
+### `CODEBUILD_S3_RESULT_PATH`
 **optional**
 
-If set and the build is a success this will store a file for every
-git commit containing the most recent AWS CodeBuild ID.
+If set and the build is a success this will store a file for every git commit built, containing the most recent AWS CodeBuild ID.
 
-Useful for custom BitBucket Pipelines.
+Useful for custom pipelines.
 
 **Example**
-`codebuild/my-project/bitbucketmap`
+`codebuild/my-project/codebuild-results`
 
-**Example Bucket Structure**
+**Example Bucket Structures**
 ```
 - codebuild
 -- my-project
---- bitbucketmap
----- BITBUCKETUSER-REPONAME-GITSHA
+--- codebuild-results
+---- BITBUCKET_REPO_OWNER-REPONAME-COMMIT_SHA.json
+---- ...
+```
+
+```
+- codebuild
+-- my-project
+--- codebuild-results
+---- GITLAB_PROJECT_NAMESPACE-COMMIT_REF-COMMIT_SHA.json
 ---- ...
 ```
 
 ### `WAIT_FOR_CODEBUILD=[true]`
-If `true` then Bitbucket Pipelines will wait for AWS CodeBuild to
-finish. If the build fails then so will the pipeline in Bitbucket.
+If `true` then Bitbucket|GitLab CI Pipeline will wait for AWS CodeBuild to
+finish. If the build fails then so will the pipeline in Bitbucket|GitLab CI.
+
+### `CODEPIPELINE_S3_BUCKET`
+**required**
+
+The source S3 bucket configured in AWS CodePipeline, set to automatically run when new files are loaded
+
+### `CODEPIPELINE_S3_ARCHIVE_KEY`
+**required**
+
+The source S3 key configured in AWS CodePipeline, set to automatically run when new files are loaded
 
 ---
 
 
 
-[dockerhub-url]: https://hub.docker.com/r/sungardas/bitbucket-awscode/
+[dockerhub-url]: https://hub.docker.com/r/ebarault/codebuild-git-integration/
