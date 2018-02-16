@@ -94,7 +94,7 @@ start_build() {
 
   else
     # User did NOT provide a codebuild "cli-input-json" file, use "cli-input-json" file generated from CI env vars
-    cli_input_json=`cat /tmp/_cli_input.json`
+    cli_input_json=`jq -s -c . /tmp/_cli_input.json`
   fi
 
   # helper to conditionally pass the `--project-name` option to codebuild start-build command
