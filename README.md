@@ -132,6 +132,10 @@ The AWS Secret Access key for the User who will start the build
 
 The region AWS CodeBuild will be executed in
 
+### `VERBOSE`
+
+When set to `true`, this set `set-x` in shell scripts to carbon copy all executed commands, this is helpful when debugging but can reveal secrets unwillingly
+
 ### `CODEBUILD_S3_BUCKET`
 **required**
 

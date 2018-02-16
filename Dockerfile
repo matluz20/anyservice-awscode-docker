@@ -5,5 +5,8 @@ RUN apk add --update \
     git \
   && rm -rf /var/cache/apk/*
 
-ADD scripts/start-build /usr/local/bin
-ADD scripts/push-to-pipeline /usr/local/bin
+ADD scripts/ /usr/local/bin
+
+RUN chmod +x /usr/local/bin/start-build
+RUN chmod +x /usr/local/bin/push-to-pipeline
+RUN chmod +x /usr/local/bin/aws_assume_role

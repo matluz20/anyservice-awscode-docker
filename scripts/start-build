@@ -1,5 +1,9 @@
-#!/bin/ash
+#!/bin/bash
 set -e
+
+if [ "${VERBOSE}" = true ]; then
+  set -x
+fi
 
 OPTS=$@
 
@@ -8,31 +12,36 @@ git diff HEAD~ --name-only
 git diff HEAD~ --name-only > .awscode_diff_head
 
 # Check for required env vars
-if [ -z "$CODEBUILD_S3_BUCKET" ]; then
+if [ -z "${CODEBUILD_S3_BUCKET}" ]; then
   echo "CODEBUILD_S3_BUCKET must be set"
   missing_vars=true
 fi
 
-if [ -z "$CODEBUILD_S3_ARCHIVE_KEY" ]; then
+if [ -z "${CODEBUILD_S3_ARCHIVE_KEY}" ]; then
   echo "CODEBUILD_S3_ARCHIVE_KEY must be set"
   missing_vars=true
 fi
 
-if [ $missing_vars = true ]; then
+if [ "${missing_vars}" = "true" ]; then
   exit 1
 fi
 
+# Switching AWS principal
+if [ -n "${AWS_ASSUME_ROLE}" ]; then
+  . aws_assume_role "${AWS_ASSUME_ROLE}"
+fi
+
 # Detect CI environment: either BITBUCKET or GITLAB_CI
-if [ -n "$BITBUCKET_COMMIT" ]; then
+if [ -n "${BITBUCKET_COMMIT}" ]; then
   # BITBUCKET doc: https://confluence.atlassian.com/bitbucket/environment-variables-794502608.html
   ci_env_pattern="BITBUCKET_"
-  codebuild_result_file="$BITBUCKET_REPO_OWNER-$BITBUCKET_REPO_SLUG-$BITBUCKET_COMMIT.json";
+  codebuild_result_file="${BITBUCKET_REPO_OWNER}.${BITBUCKET_REPO_SLUG}.${BITBUCKET_COMMIT}.json";
 
   echo "Detected BitBucket environment"
-elif [ -n "$GITLAB_CI" ]; then
+elif [ -n "${GITLAB_CI}" ]; then
   # GITLAB doc: https://docs.gitlab.com/ce/ci/variables/README.html
   ci_env_pattern="CI_|GITLAB_"
-  codebuild_result_file="$CI_PROJECT_NAMESPACE-$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHA.json";
+  codebuild_result_file="${CI_PROJECT_NAMESPACE}.${CI_COMMIT_REF_SLUG}.${CI_COMMIT_SHA}.json";
 
   echo "Detected GitLab environment"
 fi
@@ -44,24 +53,24 @@ WAIT_FOR_CODEBUILD=${WAIT_FOR_CODEBUILD:-true}
 zip -r code.zip ./
 
 ## Put source code archive on specified S3 Bucket/Key and extract object version
-echo "START PUT: $CODEBUILD_S3_BUCKET/$CODEBUILD_S3_ARCHIVE_KEY"
+echo "START PUT: ${CODEBUILD_S3_BUCKET}/${CODEBUILD_S3_ARCHIVE_KEY}"
 
 s3_put_archive() {
   aws s3api put-object \
     --body ./code.zip \
-    --bucket $CODEBUILD_S3_BUCKET \
-    --key $CODEBUILD_S3_ARCHIVE_KEY \
+    --bucket ${CODEBUILD_S3_BUCKET} \
+    --key ${CODEBUILD_S3_ARCHIVE_KEY} \
     --output text --query 'VersionId'
 };
 
 version_id=$(s3_put_archive);
-echo "S3 Object Version: $version_id";
+echo "S3 Object Version: ${version_id}";
 
 
 # helper to format env vars containing the ci_env_pattern (BITBUCKET_ or CI_) in space-separated list of `name=NAME,value=VALUE` elements
 ci_env() {
   env \
-  | grep -E $ci_env_pattern \
+  | grep -E ${ci_env_pattern} \
   | awk -F= '{print "name="$1 ",value="$2}' \
   | tr "\n" " "
 };
@@ -69,14 +78,13 @@ ci_env() {
 # helper to format env vars containing the ci_env_pattern (BITBUCKET_ or CI_) in a line-separated list `{"name":"NAME","value":"VALUE"}` elements
 ci_env_json() {
   env \
-    | grep -E $ci_env_pattern \
+    | grep -E ${ci_env_pattern} \
     | awk -F= '{"jq -n -c '\''.name=\"" $1 "\" | .value=\"" $2 "\"'\''" | getline ts; print ts}'
 };
 
 
 ## Start build
 start_build() {
-
   ## build a codebuild "cli-input-json" object out of the CI env vars, so we they can be passed to codebuild runner
   # format:
   # {
@@ -88,41 +96,36 @@ start_build() {
   # }
   echo $(ci_env_json) | jq -s -c '{environmentVariablesOverride:.}' > /tmp/_cli_input.json;
 
-  if [ -n "$CODEBUILD_START_JSON_FILE" ]; then
-    # User provided a a codebuild "cli-input-json" file, merge the `environmentVariablesOverride` keys with user provided "cli-input-json" file
-    cli_input_json=`jq -s -c '[.[] | to_entries] | flatten | reduce (.[]) as $dot ({}; (if ($dot.value|type == "array") then .[$dot.key] += $dot.value else .[$dot.key] = $dot.value end))' /tmp/_cli_input.json $CODEBUILD_START_JSON_FILE`;
-
-  else
-    # User did NOT provide a codebuild "cli-input-json" file, use "cli-input-json" file generated from CI env vars
-    cli_input_json=`jq -s -c . /tmp/_cli_input.json`
+  # User provided a a codebuild "cli-input-json" file, merge the env vars in the `environmentVariablesOverride` key with user provided "cli-input-json" file, otherwise only the env vars in the environmentVariablesOverride key will be used
+  if [ -n "${CODEBUILD_START_JSON_FILE}" ]; then
+    jq -s -c '[.[] | to_entries] | flatten | reduce (.[]) as $dot ({}; (if ($dot.value|type == "array") then .[$dot.key] += $dot.value else .[$dot.key] = $dot.value end))' /tmp/_cli_input.json ${CODEBUILD_START_JSON_FILE} > /tmp/_cli_input.json;
   fi
 
   # helper to conditionally pass the `--project-name` option to codebuild start-build command
-  local project_name_arg="--project-name $CODEBUILD_PROJECT_NAME";
-  if [ -z $CODEBUILD_PROJECT_NAME ]; then
+  local project_name_arg="--project-name ${CODEBUILD_PROJECT_NAME}";
+  if [ -z ${CODEBUILD_PROJECT_NAME} ]; then
     project_name_arg="";
   fi
 
-  aws codebuild start-build $project_name_arg \
-    --source-version $version_id \
-    --cli-input-json $cli_input_json \
+  aws codebuild start-build ${project_name_arg} \
+    --source-version ${version_id} \
+    --cli-input-json file:///tmp/_cli_input.json \
     --output text \
     --query 'build.id' \
-    $@
+    ${OPTS}
 };
 
 # Start build and record the build id
 start_build_id=$(start_build);
-echo $start_build_id;
-
+echo ${start_build_id};
 
 ## Wait for build result (conditional)
-if [ $WAIT_FOR_CODEBUILD = "true" ]; then
+if [ ${WAIT_FOR_CODEBUILD} = "true" ]; then
 
   ## Until build is complete, wait and check again
-  until [ $(aws codebuild batch-get-builds --ids $start_build_id --output text --query 'builds[0].buildComplete') == "True" ];
+  until [ $(aws codebuild batch-get-builds --ids ${start_build_id} --output text --query 'builds[0].buildComplete') = "True" ];
   do
-    echo "Waiting for $start_build_id to complete";
+    echo "Waiting for ${start_build_id} to complete";
     sleep 5;
   done
 
@@ -130,32 +133,32 @@ if [ $WAIT_FOR_CODEBUILD = "true" ]; then
 
   # Get build result
   # output spec: https://docs.aws.amazon.com/cli/latest/reference/codebuild/batch-get-builds.html#output
-  build_result=$(aws codebuild batch-get-builds --ids $start_build_id --query "builds[0]");
-  echo $build_result;
+  build_result=$(aws codebuild batch-get-builds --ids "${start_build_id}" --query "builds[0]");
+  echo ${build_result};
 
   # Extract build status from job details
-  codebuild_status=`echo $build_result | jq -c -r '.buildStatus'`;
+  codebuild_status=`echo ${build_result} | jq -c -r '.buildStatus'`;
 
   # Build succeeded
-  if [ $codebuild_status == "SUCCEEDED" ]; then
-    echo "$start_build_id completed successfully!"
+  if [ ${codebuild_status} = "SUCCEEDED" ]; then
+    echo "${start_build_id} completed successfully!"
 
     # save build result to S3 bucket (conditional)
     if [ -n "$CODEBUILD_S3_RESULT_PATH" ]; then
       echo "Writing map file"
-      echo $build_result > _build_result;
+      echo ${build_result} > _build_result;
 
       aws s3api put-object \
         --body _build_result \
-        --bucket $CODEBUILD_S3_BUCKET \
-        --key "$CODEBUILD_S3_RESULT_PATH/$codebuild_result_file"
+        --bucket ${CODEBUILD_S3_BUCKET} \
+        --key "${CODEBUILD_S3_RESULT_PATH}/${codebuild_result_file}"
     fi
     true
 
   # Build failed
   else
-    echo "$start_build_id failed!"
-    echo $codebuild_status;
+    echo "${start_build_id} failed!"
+    echo ${codebuild_status};
     exit 1;
   fi
 fi
