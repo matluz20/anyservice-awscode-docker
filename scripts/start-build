@@ -7,10 +7,6 @@ fi
 
 OPTS=$@
 
-# Utility to preform work or see only changed files
-git diff HEAD~ --name-only
-git diff HEAD~ --name-only > .awscode_diff_head
-
 # Check for required env vars
 if [ -z "${CODEBUILD_S3_BUCKET}" ]; then
   echo "CODEBUILD_S3_BUCKET must be set"
