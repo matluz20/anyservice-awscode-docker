@@ -45,8 +45,8 @@ fi
 # Wait for Codebuild by default
 WAIT_FOR_CODEBUILD=${WAIT_FOR_CODEBUILD:-true}
 
-# Build source code archive for selected commit
-zip -r code.zip ./
+# Build source code archive for selected commit using option -y to preserve symlinks
+zip -r -y code.zip ./
 
 ## Put source code archive on specified S3 Bucket/Key and extract object version
 echo "START PUT: ${CODEBUILD_S3_BUCKET}/${CODEBUILD_S3_ARCHIVE_KEY}"

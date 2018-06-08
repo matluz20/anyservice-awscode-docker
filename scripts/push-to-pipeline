@@ -83,7 +83,7 @@ fi
 
 echo "Is this a zip file? " ${is_zip}
 if [ ${is_zip} = "false" ]; then
-  zip -r _pipeline.zip .
+  zip -r -y _pipeline.zip .
 fi
 
 echo "Final file list"
