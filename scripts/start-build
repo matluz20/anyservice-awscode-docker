@@ -64,11 +64,11 @@ s3_put_archive() {
 
 ## Put source code archive on specified S3 Bucket/Key and extract object version
 echo
-echo "-> Uploading code to S3 location: ${CODEBUILD_S3_BUCKET}/${CODEBUILD_S3_ARCHIVE_KEY}"
+echo "-> Uploading code to S3 location: s3://${CODEBUILD_S3_BUCKET}/${CODEBUILD_S3_ARCHIVE_KEY}"
 
-version_id=$(s3_put_archive);
+version_id=$(s3_put_archive)
 
-echo "S3 Object version for uploaded code is: ${version_id}";
+echo "S3 Object version for uploaded code is: ${version_id}"
 
 
 # helper to format env vars containing the ci_env_pattern (BITBUCKET_ or CI_|GITLAB_CI_) in a space-separated list of `name=NAME,value=VALUE` elements
@@ -189,17 +189,21 @@ if [ ${WAIT_FOR_CODEBUILD} = "true" ]; then
   # Build succeeded
   echo
   if [ ${codebuild_status} = "SUCCEEDED" ]; then
-    echo "Build ${start_build_id} completed successfully!"
+    echo "-> Build ${start_build_id} completed successfully!"
 
     # save build result to S3 bucket (conditional)
     if [ -n "$CODEBUILD_S3_RESULT_PATH" ]; then
-      echo "Saving build result to S3 location: ${CODEBUILD_S3_RESULT_PATH}/${codebuild_result_file}"
+      echo "Saving build result to S3 location: s3://${CODEBUILD_S3_BUCKET}/${CODEBUILD_S3_RESULT_PATH}/${codebuild_result_file}"
       echo ${build_result} | jq . > _build_result;
 
-      aws s3api put-object \
-        --body _build_result \
-        --bucket ${CODEBUILD_S3_BUCKET} \
-        --key "${CODEBUILD_S3_RESULT_PATH}/${codebuild_result_file}"
+      s3_put_result() {
+        aws s3api put-object \
+          --body _build_result \
+          --bucket ${CODEBUILD_S3_BUCKET} \
+          --key "${CODEBUILD_S3_RESULT_PATH}/${codebuild_result_file}"
+      }
+
+      quiet=$(s3_put_result)
     fi
     true
 
@@ -218,9 +222,10 @@ if [ ${WAIT_FOR_CODEBUILD} = "true" ]; then
   artifacts_location=`echo ${artifacts} | jq -c -r '.location'`;
 
   if [ "${artifacts_location}" != "" ]; then
+    echo
     echo "-> Artifacts were generated for this build:"
     echo
-    echo "$artifacts" | jq .
+    echo "${artifacts}" | jq .
   fi
 
 fi
