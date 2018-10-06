@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 if [ "$AWS_ASSUME_ROLE" ]; then
   ROLE=$AWS_ASSUME_ROLE
@@ -21,6 +21,11 @@ export AWS_ACCESS_KEY_ID=$(echo $assumed_role | jq .Credentials.AccessKeyId | xa
 export AWS_SECRET_ACCESS_KEY=$(echo $assumed_role | jq .Credentials.SecretAccessKey | xargs)
 export AWS_SESSION_TOKEN=$(echo $assumed_role | jq .Credentials.SessionToken | xargs)
 
-echo "Assuming role $ROLE"
+# required for ansible ec2.py dynamic inventory to work with assumed roles
+# cf. https://github.com/ansible/ansible/issues/15215
+export AWS_SECURITY_TOKEN=${AWS_SESSION_TOKEN}
+
+echo
+echo "-> Assuming role $ROLE"
 echo "AWS user is now $AWS_ASSUMED_ROLE_USER"
 echo "Session will expire at $AWS_SESSION_EXPIRATION"

@@ -52,10 +52,7 @@ fi
 WAIT_FOR_CODEBUILD=${WAIT_FOR_CODEBUILD:-true}
 
 # Build source code archive for selected commit using option -y to preserve symlinks
-zip -r -y code.zip ./
-
-## Put source code archive on specified S3 Bucket/Key and extract object version
-echo "START PUT: ${CODEBUILD_S3_BUCKET}/${CODEBUILD_S3_ARCHIVE_KEY}"
+zip -r -y -q code.zip ./
 
 s3_put_archive() {
   aws s3api put-object \
@@ -65,8 +62,13 @@ s3_put_archive() {
     --output text --query 'VersionId'
 };
 
+## Put source code archive on specified S3 Bucket/Key and extract object version
+echo
+echo "-> Uploading code to S3 location: ${CODEBUILD_S3_BUCKET}/${CODEBUILD_S3_ARCHIVE_KEY}"
+
 version_id=$(s3_put_archive);
-echo "S3 Object Version: ${version_id}";
+
+echo "S3 Object version for uploaded code is: ${version_id}";
 
 
 # helper to format env vars containing the ci_env_pattern (BITBUCKET_ or CI_|GITLAB_CI_) in a space-separated list of `name=NAME,value=VALUE` elements
@@ -123,36 +125,75 @@ start_build() {
 
 # Start build and record the build id
 start_build_id=$(start_build);
-echo ${start_build_id};
-
+echo
+echo "-> Started build: ${start_build_id}";
+echo
 ## Wait for build result (conditional)
 if [ ${WAIT_FOR_CODEBUILD} = "true" ]; then
 
-  ## Until build is complete, wait and check again
+  fetch_logs() {
+    # get cloudwatch logs info
+    build_logs=$(aws codebuild batch-get-builds --ids ${start_build_id} --query 'builds[0].logs')
+    build_cwlogs_group=`echo ${build_logs} | jq -c -r '.groupName'`;
+    build_cwlogs_stream=`echo ${build_logs} | jq -c -r '.streamName'`;
+
+    # get log events
+    if [ "${nextForwardToken}" = "" ]; then
+      log_events=$(aws logs get-log-events --log-group-name ${build_cwlogs_group} --log-stream-name ${build_cwlogs_stream} --start-from-head)
+    else
+      log_events=$(aws logs get-log-events --log-group-name ${build_cwlogs_group} --log-stream-name ${build_cwlogs_stream} --start-from-head --next-token ${nextForwardToken})
+    fi
+    nextForwardToken=`echo ${log_events} | jq -c -r '.nextForwardToken'`;
+    events=`echo ${log_events} | jq -c -r '.events'`;
+
+    if [ "$(echo "${events}" | jq -r '.[]')" = "" ] && [ -z ${build_has_started} ]; then
+      echo "Waiting for build phase to start"
+    elif [ -z ${build_has_started} ]; then
+      echo
+      echo "-> Build phase started, log events follow:"
+      echo "------------------------------------------"
+      echo
+      build_has_started=true
+    fi
+
+    # iterate on log events to display log messages only
+    for row in $(echo "${events}" | jq -r '.[] | @base64'); do
+      _jq() {
+        echo ${row} | base64 --decode | jq -r ${1}
+      }
+      echo $(_jq '.message')
+    done
+  }
+
+  ## Wait until build is complete and fetch logs
   until [ "$(aws codebuild batch-get-builds --ids ${start_build_id} --output text --query 'builds[0].buildComplete')" = "True" ];
   do
-    echo "Waiting for ${start_build_id} to complete";
-    sleep 5;
+    fetch_logs;
+    # wait 10s before checking build status again
+    sleep 10;
   done
+
+  # fetch last logs
+  fetch_logs
 
   ## Build has completed, it is either in state SUCCEEDED or in faulty state: FAILED, FAULT, STOPPED, TIMED_OUT
 
   # Get build result
   # output spec: https://docs.aws.amazon.com/cli/latest/reference/codebuild/batch-get-builds.html#output
   build_result=$(aws codebuild batch-get-builds --ids "${start_build_id}" --query "builds[0]");
-  echo ${build_result};
 
   # Extract build status from job details
   codebuild_status=`echo ${build_result} | jq -c -r '.buildStatus'`;
 
   # Build succeeded
+  echo
   if [ ${codebuild_status} = "SUCCEEDED" ]; then
-    echo "${start_build_id} completed successfully!"
+    echo "Build ${start_build_id} completed successfully!"
 
     # save build result to S3 bucket (conditional)
     if [ -n "$CODEBUILD_S3_RESULT_PATH" ]; then
-      echo "Writing map file"
-      echo ${build_result} > _build_result;
+      echo "Saving build result to S3 location: ${CODEBUILD_S3_RESULT_PATH}/${codebuild_result_file}"
+      echo ${build_result} | jq . > _build_result;
 
       aws s3api put-object \
         --body _build_result \
@@ -163,8 +204,22 @@ if [ ${WAIT_FOR_CODEBUILD} = "true" ]; then
 
   # Build failed
   else
-    echo "${start_build_id} failed!"
-    echo ${codebuild_status};
+    echo "-> Build ${start_build_id} failed!"
+    echo "Build failure reason: ${codebuild_status}"
+    echo "Build result follows:"
+    echo
+    echo "${build_result}" | jq .
     exit 1;
   fi
+
+  # Artifacts
+  artifacts=`echo ${build_result} | jq -c -r '.artifacts'`;
+  artifacts_location=`echo ${artifacts} | jq -c -r '.location'`;
+
+  if [ "${artifacts_location}" != "" ]; then
+    echo "-> Artifacts were generated for this build:"
+    echo
+    echo "$artifacts" | jq .
+  fi
+
 fi
