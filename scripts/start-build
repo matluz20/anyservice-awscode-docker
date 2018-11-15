@@ -197,30 +197,25 @@ if [ ${WAIT_FOR_CODEBUILD} = "true" ]; then
   if [ ${codebuild_status} = "SUCCEEDED" ]; then
     echo "-> Build ${start_build_id} completed successfully!"
 
-    # save build result to S3 bucket (conditional)
-    if [ -n "$CODEBUILD_S3_RESULT_PATH" ]; then
-      echo "Saving build result to S3 location: s3://${CODEBUILD_S3_BUCKET}/${CODEBUILD_S3_RESULT_PATH}/${codebuild_result_file}"
-      echo ${build_result} | jq . > _build_result;
-
-      s3_put_result() {
-        aws s3api put-object \
-          --body _build_result \
-          --bucket ${CODEBUILD_S3_BUCKET} \
-          --key "${CODEBUILD_S3_RESULT_PATH}/${codebuild_result_file}"
-      }
-
-      quiet=$(s3_put_result)
-    fi
-    true
-
   # Build failed
   else
     echo "-> Build ${start_build_id} failed!"
     echo "Build failure reason: ${codebuild_status}"
-    echo "Build result follows:"
-    echo
-    echo "${build_result}" | jq .
-    exit 1;
+  fi
+
+  # Save build result to S3 bucket (conditional)
+  if [ -n "$CODEBUILD_S3_RESULT_PATH" ]; then
+    echo "Saving build result to S3 location: s3://${CODEBUILD_S3_BUCKET}/${CODEBUILD_S3_RESULT_PATH}/${codebuild_result_file}"
+    echo ${build_result} | jq . > _build_result;
+
+    s3_put_result() {
+      aws s3api put-object \
+        --body _build_result \
+        --bucket ${CODEBUILD_S3_BUCKET} \
+        --key "${CODEBUILD_S3_RESULT_PATH}/${codebuild_result_file}"
+    }
+
+    quiet=$(s3_put_result)
   fi
 
   # Artifacts
