@@ -137,6 +137,11 @@ if [ ${WAIT_FOR_CODEBUILD} = "true" ]; then
     build_cwlogs_group=`echo ${build_logs} | jq -c -r '.groupName'`;
     build_cwlogs_stream=`echo ${build_logs} | jq -c -r '.streamName'`;
 
+    if [ "${build_cwlogs_group}" = "null" ] || [ "${build_cwlogs_stream}" = "null" ]; then
+      echo "Waiting for build phase to start"
+      return
+    fi
+
     # get log events
     if [ "${nextForwardToken}" = "" ]; then
       log_events=$(aws logs get-log-events --log-group-name ${build_cwlogs_group} --log-stream-name ${build_cwlogs_stream} --start-from-head)
@@ -148,6 +153,7 @@ if [ ${WAIT_FOR_CODEBUILD} = "true" ]; then
 
     if [ "$(echo "${events}" | jq -r '.[]')" = "" ] && [ -z ${build_has_started} ]; then
       echo "Waiting for build phase to start"
+      return
     elif [ -z ${build_has_started} ]; then
       echo
       echo "-> Build phase started, log events follow:"
