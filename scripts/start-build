@@ -189,6 +189,22 @@ if [ ${WAIT_FOR_CODEBUILD} = "true" ]; then
   # output spec: https://docs.aws.amazon.com/cli/latest/reference/codebuild/batch-get-builds.html#output
   build_result=$(aws codebuild batch-get-builds --ids "${start_build_id}" --query "builds[0]");
 
+  # Save build result to S3 bucket (conditional)
+  if [ -n "$CODEBUILD_S3_RESULT_PATH" ]; then
+    echo
+    echo "Saving build result to S3 location: s3://${CODEBUILD_S3_BUCKET}/${CODEBUILD_S3_RESULT_PATH}/${codebuild_result_file}"
+    echo ${build_result} | jq . > _build_result;
+
+    s3_put_result() {
+      aws s3api put-object \
+        --body _build_result \
+        --bucket ${CODEBUILD_S3_BUCKET} \
+        --key "${CODEBUILD_S3_RESULT_PATH}/${codebuild_result_file}"
+    }
+
+    quiet=$(s3_put_result)
+  fi
+
   # Extract build status from job details
   codebuild_status=`echo ${build_result} | jq -c -r '.buildStatus'`;
 
@@ -201,21 +217,7 @@ if [ ${WAIT_FOR_CODEBUILD} = "true" ]; then
   else
     echo "-> Build ${start_build_id} failed!"
     echo "Build failure reason: ${codebuild_status}"
-  fi
-
-  # Save build result to S3 bucket (conditional)
-  if [ -n "$CODEBUILD_S3_RESULT_PATH" ]; then
-    echo "Saving build result to S3 location: s3://${CODEBUILD_S3_BUCKET}/${CODEBUILD_S3_RESULT_PATH}/${codebuild_result_file}"
-    echo ${build_result} | jq . > _build_result;
-
-    s3_put_result() {
-      aws s3api put-object \
-        --body _build_result \
-        --bucket ${CODEBUILD_S3_BUCKET} \
-        --key "${CODEBUILD_S3_RESULT_PATH}/${codebuild_result_file}"
-    }
-
-    quiet=$(s3_put_result)
+    exit 1;
   fi
 
   # Artifacts
