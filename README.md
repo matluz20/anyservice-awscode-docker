@@ -132,6 +132,16 @@ The AWS Secret Access key for the User who will start the build
 
 The region AWS CodeBuild will be executed in
 
+### `AWS_ASSUME_ROLE`
+**optional**
+
+The arn of an AWS IAM Role to assume when running codebuild/codepipeline. This will generate an inject STS temporary session credentials into the shell environment
+
+### `AWS_ASSUME_ROLE_DURATION`
+**optional**
+
+The maximum validity period requested for the STS session credentials generated via the AWS_ASSUME_ROLE option. Defaults to 3600 seconds (one hour)
+
 ### `VERBOSE`
 
 When set to `true`, this set `set-x` in shell scripts to carbon copy all executed commands, this is helpful when debugging but can reveal secrets unwillingly
@@ -234,6 +244,16 @@ The source S3 bucket configured in AWS CodePipeline, set to automatically run wh
 **required**
 
 The source S3 key configured in AWS CodePipeline, set to automatically run when new files are loaded
+
+### `CI_PACKAGE_PATH`
+**optional**
+
+The relative path of the folder to zip and send to codebuild through S3. Defaults to `./` which archives the root folder
+
+### `CI_ENV_PATTERN`
+**optional**
+
+Add additionals environment variables patterns to pass vars to codebuild when matching a given prefix. Each pattern separated by a pipe character `|`. Defaults to `CICI_|GITLAB_` when using Gitlab-CI and `BITBUCKET_` when using Bitbucket
 
 ---
 

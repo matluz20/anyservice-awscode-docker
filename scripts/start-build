@@ -48,11 +48,17 @@ elif [ -n "${GITLAB_CI}" ]; then
   echo "Detected GitLab environment"
 fi
 
+# Add additionals environment variables patterns to pass vars to codebuild when matching a given prefix
+if [ -z "${CI_ENV_PATTERN}" ]; then
+  ci_env_pattern="${ci_env_pattern}|${CI_ENV_PATTERN}"
+fi
+
 # Wait for Codebuild by default
 WAIT_FOR_CODEBUILD=${WAIT_FOR_CODEBUILD:-true}
 
 # Build source code archive for selected commit using option -y to preserve symlinks
-zip -r -y -q code.zip ./
+CI_PACKAGE_PATH=${CI_PACKAGE_PATH:-.}/
+zip -r -y -q code.zip ${CI_PACKAGE_PATH}
 
 s3_put_archive() {
   aws s3api put-object \
@@ -64,7 +70,7 @@ s3_put_archive() {
 
 ## Put source code archive on specified S3 Bucket/Key and extract object version
 echo
-echo "-> Uploading code to S3 location: s3://${CODEBUILD_S3_BUCKET}/${CODEBUILD_S3_ARCHIVE_KEY}"
+echo "-> Uploading code (${CI_PACKAGE_PATH}) to S3 location: s3://${CODEBUILD_S3_BUCKET}/${CODEBUILD_S3_ARCHIVE_KEY}"
 
 version_id=$(s3_put_archive)
 
@@ -127,6 +133,7 @@ start_build() {
 start_build_id=$(start_build);
 echo
 echo "-> Started build: ${start_build_id}";
+echo "Build details are available at the following url \nhttps://${AWS_DEFAULT_REGION}.console.aws.amazon.com/codebuild/home?region=${AWS_DEFAULT_REGION}#/builds/${start_build_id}/view/new"
 echo
 ## Wait for build result (conditional)
 if [ ${WAIT_FOR_CODEBUILD} = "true" ]; then
@@ -155,6 +162,8 @@ if [ ${WAIT_FOR_CODEBUILD} = "true" ]; then
       echo "Waiting for build phase to start"
       return
     elif [ -z ${build_has_started} ]; then
+      echo
+      echo "Cloudwatch logs are available at the following url \nhttps://${AWS_DEFAULT_REGION}.console.aws.amazon.com/cloudwatch/home?region=${AWS_DEFAULT_REGION}#logEventViewer:group=${build_cwlogs_group};stream=${build_cwlogs_stream}"
       echo
       echo "-> Build phase started, log events follow:"
       echo "------------------------------------------"
