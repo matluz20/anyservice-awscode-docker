@@ -57,8 +57,11 @@ fi
 WAIT_FOR_CODEBUILD=${WAIT_FOR_CODEBUILD:-true}
 
 # Build source code archive for selected commit using option -y to preserve symlinks
-CI_PACKAGE_PATH=${CI_PACKAGE_PATH:-.}/
-zip -r -y -q code.zip ${CI_PACKAGE_PATH}
+CI_PACKAGE_PATH=${CI_PACKAGE_PATH:-.}
+PWD=`pwd`
+cd ${CI_PACKAGE_PATH}
+zip -r -y -q ${PWD}/code.zip .
+cd ${PWD}
 
 s3_put_archive() {
   aws s3api put-object \
