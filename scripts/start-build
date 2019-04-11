@@ -49,7 +49,7 @@ elif [ -n "${GITLAB_CI}" ]; then
 fi
 
 # Add additionals environment variables patterns to pass vars to codebuild when matching a given prefix
-if [ -z "${CI_ENV_PATTERN}" ]; then
+if [ -n "${CI_ENV_PATTERN}" ]; then
   ci_env_pattern="${ci_env_pattern}|${CI_ENV_PATTERN}"
 fi
 

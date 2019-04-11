@@ -28,7 +28,7 @@ The user can export extra environment variables by prefixing them by `BITBUCKET_
 All environment variables prefixed by `CI_|GITLAB_` are exported.
 The full list of environment variables set by Gitlab pipeline is available at https://docs.gitlab.com/ce/ci/variables/README.html
 
-The user can export extra environment variables by prefixing them by `CI_` or `GITLAB_`.
+The user can export extra environment variables by prefixing them by `CI_` or `GITLAB_`, or by using the `CI_ENV_PATTERN` environment variable to provide extra prefixes to export.
 
 ### Bitbucket pipeline integration (`bitbucket-pipelines.yml`)
 ```
@@ -93,7 +93,7 @@ pipelines:
 ```
 
 ### GitLab-CI integration (`.gitlab-ci.yml`)
-```
+```yaml
 image: ebarault/codebuild-git-integration:2.0
 stages:
     - deploy
@@ -112,46 +112,53 @@ pipeline_release:
           push-to-pipeline
 ```
 
+**_Note_**: Additional cli options can be passed to `aws codebuild start-build` command by providing them to the docker's image `start-build` script, as in:
+
+```yaml
+    ...
+    script:
+        - start-build --buildspec-override cicd/my-other-buildspec.yml
+```
 
 ## Environment Variables
 
 It is recommended to keep all configuration in `bitbucket-pipelines.yml` | `.gitlab-ci.yml` files except for `AWS_ACCESS_KEY_ID` and the `AWS_SECRET_ACCESS_KEY`. That will ensure a commit is always associated with the corresponding S3 buckets and paths.
 
-### `AWS_ACCESS_KEY_ID`
+#### `AWS_ACCESS_KEY_ID`
 **required**
 
 The AWS Access Key for the User who will start the build
 
-### `AWS_SECRET_ACCESS_KEY`
+#### `AWS_SECRET_ACCESS_KEY`
 **required**
 
 The AWS Secret Access key for the User who will start the build
 
-### `AWS_DEFAULT_REGION`
+#### `AWS_DEFAULT_REGION`
 **required**
 
 The region AWS CodeBuild will be executed in
 
-### `AWS_ASSUME_ROLE`
+#### `AWS_ASSUME_ROLE`
 **optional**
 
 The arn of an AWS IAM Role to assume when running codebuild/codepipeline. This will generate an inject STS temporary session credentials into the shell environment
 
-### `AWS_ASSUME_ROLE_DURATION`
+#### `AWS_ASSUME_ROLE_DURATION`
 **optional**
 
 The maximum validity period requested for the STS session credentials generated via the AWS_ASSUME_ROLE option. Defaults to 3600 seconds (one hour)
 
-### `VERBOSE`
+#### `VERBOSE`
 
 When set to `true`, this set `set-x` in shell scripts to carbon copy all executed commands, this is helpful when debugging but can reveal secrets unwillingly
 
-### `CODEBUILD_S3_BUCKET`
+#### `CODEBUILD_S3_BUCKET`
 **required**
 
 The S3 bucket AWS CodeBuild will use to pull the code archive
 
-### `CODEBUILD_S3_ARCHIVE_KEY`
+#### `CODEBUILD_S3_ARCHIVE_KEY`
 **required**
 
 The S3 key AWS CodeBuild will use to pull the code archive
@@ -159,7 +166,7 @@ The S3 key AWS CodeBuild will use to pull the code archive
 **Example**
 `codebuild/my-project/my-code.zip`
 
-### `CODEBUILD_START_JSON_FILE`
+#### `CODEBUILD_START_JSON_FILE`
 **optional**
 
 Full path to a JSON file within the project that will be merged with options provided in environment variables and added to the `start-build` CodeBuild command.
@@ -199,12 +206,12 @@ aws codebuild start-build --generate-cli-skeleton
 }
 ```
 
-### `CODEBUILD_PROJECT_NAME`
+#### `CODEBUILD_PROJECT_NAME`
 **optional**
 
 The name of the AWS CodeBuild Project. If not set here, this must be defined in `CODEBUILD_START_JSON_FILE`
 
-### `CODEBUILD_S3_RESULT_PATH`
+#### `CODEBUILD_S3_RESULT_PATH`
 **optional**
 
 If set and the build is a success this will store a file for every git commit built, containing the most recent AWS CodeBuild ID.
@@ -231,26 +238,26 @@ Useful for custom pipelines.
 ---- ...
 ```
 
-### `WAIT_FOR_CODEBUILD=[true]`
+#### `WAIT_FOR_CODEBUILD=[true]`
 If `true` then Bitbucket|GitLab CI Pipeline will wait for AWS CodeBuild to
 finish. If the build fails then so will the pipeline in Bitbucket|GitLab CI.
 
-### `CODEPIPELINE_S3_BUCKET`
+#### `CODEPIPELINE_S3_BUCKET`
 **required**
 
 The source S3 bucket configured in AWS CodePipeline, set to automatically run when new files are loaded
 
-### `CODEPIPELINE_S3_ARCHIVE_KEY`
+#### `CODEPIPELINE_S3_ARCHIVE_KEY`
 **required**
 
 The source S3 key configured in AWS CodePipeline, set to automatically run when new files are loaded
 
-### `CI_PACKAGE_PATH`
+#### `CI_PACKAGE_PATH`
 **optional**
 
 The relative path of the folder to zip and send to codebuild through S3. Defaults to `./` which archives the root folder
 
-### `CI_ENV_PATTERN`
+#### `CI_ENV_PATTERN`
 **optional**
 
 Add additionals environment variables patterns to pass vars to codebuild when matching a given prefix. Each pattern separated by a pipe character `|`. Defaults to `CICI_|GITLAB_` when using Gitlab-CI and `BITBUCKET_` when using Bitbucket
