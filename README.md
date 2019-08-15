@@ -32,7 +32,7 @@ The user can export extra environment variables by prefixing them by `CI_` or `G
 
 ### Bitbucket pipeline integration (`bitbucket-pipelines.yml`)
 ```
-image: ebarault/codebuild-git-integration:2.0
+image: ebarault/codebuild-git-integration:latest
 pipelines:
   default:
     - step:
@@ -50,7 +50,7 @@ pipelines:
 
 ### GitLab-CI integration (`.gitlab-ci.yml`)
 ```
-image: ebarault/codebuild-git-integration:2.0
+image: ebarault/codebuild-git-integration:latest
 stages:
     - build
 
@@ -77,7 +77,7 @@ The pipeline needs to be configured to run automatically when new files are load
 
 ### Bitbucket pipeline integration (`bitbucket-pipelines.yml`)
 ```
-image: ebarault/codebuild-git-integration:2.0
+image: ebarault/codebuild-git-integration:latest
 pipelines:
   custom:
     pipeline_release:
@@ -94,7 +94,7 @@ pipelines:
 
 ### GitLab-CI integration (`.gitlab-ci.yml`)
 ```yaml
-image: ebarault/codebuild-git-integration:2.0
+image: ebarault/codebuild-git-integration:latest
 stages:
     - deploy
 
