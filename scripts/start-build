@@ -175,12 +175,8 @@ if [ ${WAIT_FOR_CODEBUILD} = "true" ]; then
     fi
 
     # iterate on log events to display log messages only
-    # Note: base64 -D on MacOS for `base64 decode`
     for row in $(echo "${events}" | jq -r '.[] | @base64'); do
-      _jq() {
-        echo ${row} | base64 -d | jq -r ${1}
-      }
-      echo $(_jq '.message')
+      echo ${row} | base64 --decode | jq -j '.message'
     done
   }
 
