@@ -252,10 +252,10 @@ The source S3 bucket configured in AWS CodePipeline, set to automatically run wh
 
 The source S3 key configured in AWS CodePipeline, set to automatically run when new files are loaded
 
-#### `CI_PACKAGE_PATH`
+#### `CODEBUILD_CHROOT`
 **optional**
 
-The relative path of the folder to zip and send to codebuild through S3. Defaults to `./` which archives the root folder
+The relative path of the inner folder to zip and send to codebuild through S3. Defaults to `./` which archives the root folder
 
 #### `CI_ENV_PATTERN`
 **optional**

@@ -57,9 +57,9 @@ fi
 WAIT_FOR_CODEBUILD=${WAIT_FOR_CODEBUILD:-true}
 
 # Build source code archive for selected commit using option -y to preserve symlinks
-CI_PACKAGE_PATH=${CI_PACKAGE_PATH:-.}
+CODEBUILD_CHROOT=${CODEBUILD_CHROOT:-.}
 PWD=`pwd`
-cd ${CI_PACKAGE_PATH}
+cd ${CODEBUILD_CHROOT}
 zip -r -y -q ${PWD}/code.zip .
 cd ${PWD}
 
@@ -73,7 +73,7 @@ s3_put_archive() {
 
 ## Put source code archive on specified S3 Bucket/Key and extract object version
 echo
-echo "-> Uploading code (${CI_PACKAGE_PATH}) to S3 location: s3://${CODEBUILD_S3_BUCKET}/${CODEBUILD_S3_ARCHIVE_KEY}"
+echo "-> Uploading code (${CODEBUILD_CHROOT}) to S3 location: s3://${CODEBUILD_S3_BUCKET}/${CODEBUILD_S3_ARCHIVE_KEY}"
 
 version_id=$(s3_put_archive)
 
