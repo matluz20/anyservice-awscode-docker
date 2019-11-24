@@ -158,6 +158,10 @@ if [ ${WAIT_FOR_CODEBUILD} = "true" ]; then
     else
       log_events=$(aws logs get-log-events --log-group-name ${build_cwlogs_group} --log-stream-name ${build_cwlogs_stream} --start-from-head --next-token ${nextForwardToken})
     fi
+
+    # keep previous nextForwardToken value
+    previousNextForwardToken=${nextForwardToken}
+
     nextForwardToken=`echo ${log_events} | jq -c -r '.nextForwardToken'`;
     events=`echo ${log_events} | jq -c -r '.events'`;
 
@@ -175,10 +179,16 @@ if [ ${WAIT_FOR_CODEBUILD} = "true" ]; then
     fi
 
     # iterate on log events to display log messages only
-    # Note: base64 -D on MacOS for `base64 decode`
+    # Note: base64 -d on Alpine | --decode on MacOS for `base64 decode`
     for row in $(echo "${events}" | jq -r '.[] | @base64'); do
       echo ${row} | base64 -d | jq -j '.message'
     done
+
+    # if we have reached the end of the stream, get-log-events will return the same token we passed in,
+    # meaning that we need to fetch remaining logs at once if we have not reached the end of the stream
+    if [ "${nextForwardToken}" != "" ] && [ "${nextForwardToken}" != "${previousNextForwardToken}" ]; then
+      fetch_logs
+    fi
   }
 
   ## Wait until build is complete and fetch logs
