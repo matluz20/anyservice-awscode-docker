@@ -260,7 +260,7 @@ The relative path of the inner folder to zip and send to codebuild through S3. D
 #### `CI_ENV_PATTERN`
 **optional**
 
-Add additionals environment variables patterns to pass vars to codebuild when matching a given prefix. Each pattern separated by a pipe character `|`. Defaults to `CICI_|GITLAB_` when using Gitlab-CI and `BITBUCKET_` when using Bitbucket
+Add additionals environment variables patterns to pass vars to codebuild when matching a given prefix. Each pattern separated by a pipe character `|`. Defaults to `CI_|GITLAB_` when using Gitlab-CI and `BITBUCKET_` when using Bitbucket
 
 ---
 
