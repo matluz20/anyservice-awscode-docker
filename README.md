@@ -15,6 +15,8 @@ This image will create a zip archive of the project, send it to a `CODEBUILD_S3_
 
 Bitbucket|GitLab pipelines will wait for AWS CodeBuild to finish and return success or failure based on the outcome of the build.
 
+This image will download the zipped version of the codebuild artifacts and unzip it to .codebuild_artifacts 
+
 ## CI environment variables export
 CI-specific environment variables are exported to the AWS Codebuild runner:
 
@@ -261,6 +263,11 @@ The relative path of the inner folder to zip and send to codebuild through S3. D
 **optional**
 
 Add additionals environment variables patterns to pass vars to codebuild when matching a given prefix. Each pattern separated by a pipe character `|`. Defaults to `CI_|GITLAB_` when using Gitlab-CI and `BITBUCKET_` when using Bitbucket
+
+#### `ARTIFACTS_PACKAGING`
+**optional**
+
+The artifacts packaging value set in your codebuild project. Value are ZIP or NONE, default is ZIP.
 
 ---
 

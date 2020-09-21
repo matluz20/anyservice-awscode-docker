@@ -1,15 +1,15 @@
-FROM alpine:edge
-MAINTAINER @ebarault
+FROM alpine:latest
+LABEL maintainer="@ebarault"
 
-RUN apk --no-cache add \
+RUN apk update && \
+      apk --no-cache add \
       bash \
       curl \
       less \
       groff \
       jq \
-      python \
-      py-pip \
-      py2-pip && \
+      python3 \
+      py-pip && \
       pip install --upgrade pip awscli s3cmd && \
       mkdir /root/.aws \
       && rm -rf /var/cache/apk/*
