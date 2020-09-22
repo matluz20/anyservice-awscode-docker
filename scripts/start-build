@@ -259,7 +259,7 @@ if [ ${WAIT_FOR_CODEBUILD} = "true" ]; then
         echo "Failed fetching artifacts from ${artifacts_s3_bucket}/${artifacts_s3_key}";
       fi
     else
-      echo "Unsupported CODEBUILD_ARTIFACTS_PACKAGING value"
+      echo "Unsupported CODEBUILD_ARTIFACTS_PACKAGING value";
     fi
 
   fi
@@ -268,14 +268,14 @@ if [ ${WAIT_FOR_CODEBUILD} = "true" ]; then
   codebuild_status=`echo ${build_result} | jq -c -r '.buildStatus'`;
 
   # Build succeeded
-  echo
+  echo;
   if [ ${codebuild_status} = "SUCCEEDED" ]; then
-    echo "-> Build ${start_build_id} completed successfully!"
+    echo "-> Build ${start_build_id} completed successfully!";
 
   # Build failed
   else
-    echo "-> Build ${start_build_id} failed!"
-    echo "Build failure reason: ${codebuild_status}"
+    echo "-> Build ${start_build_id} failed!";
+    echo "Build failure reason: ${codebuild_status}";
     exit 1;
   fi
 
