@@ -255,11 +255,12 @@ if [ ${WAIT_FOR_CODEBUILD} = "true" ]; then
     artifacts_s3_bucket=`echo ${artifacts_s3} | cut -d '/' -f 1`;
     artifacts_s3_key=`echo ${artifacts_s3} | cut -d '/' -f 2-`;
 
-    mkdir -p .codebuild_artifacts;
-    cd .codebuild_artifacts;
+    GITLAB_ARTIFACTS_DIR="${GITLAB_ARTIFACTS_DIR:-'.codebuild_artifacts'}";
+    mkdir -p "${GITLAB_ARTIFACTS_DIR}";
+    cd "${GITLAB_ARTIFACTS_DIR}";
 
     ## Fetch artifact files in current dir
-    CODEBUILD_ARTIFACTS_PACKAGING=${CODEBUILD_ARTIFACTS_PACKAGING:-"ZIP"}
+    CODEBUILD_ARTIFACTS_PACKAGING="${CODEBUILD_ARTIFACTS_PACKAGING:-'ZIP'}";
 
     if [ "${CODEBUILD_ARTIFACTS_PACKAGING}" = "NONE" ]; then
       aws s3 sync s3://${artifacts_s3_bucket}/${artifacts_s3_key}/ .;
@@ -267,6 +268,7 @@ if [ ${WAIT_FOR_CODEBUILD} = "true" ]; then
       if `aws s3 cp --quiet s3://${artifacts_s3_bucket}/${artifacts_s3_key} .` ; then
         artifacts_name=`basename $artifacts_s3_key`;
         unzip $artifacts_name;
+        rm -f $artifacts_name;
         echo "Fetched artifacts from ${artifacts_s3_bucket}/${artifacts_s3_key}";
       else
         echo "Failed fetching artifacts from ${artifacts_s3_bucket}/${artifacts_s3_key}";

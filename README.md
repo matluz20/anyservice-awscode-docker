@@ -15,7 +15,7 @@ This image will create a zip archive of the project, send it to a `CODEBUILD_S3_
 
 Bitbucket|GitLab pipelines will wait for AWS CodeBuild to finish and return success or failure based on the outcome of the build.
 
-Artifacts produced by the codebuild project will be fetched from S3 to the `.codebuild_artifacts` dir of the Bitbucket|Gitlab runners so they can be used downstream in the pipelines.
+Artifacts produced by the codebuild project will be fetched from S3 to a directory on the Bitbucket|Gitlab runners (defaults to `.codebuild_artifacts`) so they can be used downstream in the pipelines.
 
 ## CI environment variables export
 CI-specific environment variables are exported to the AWS Codebuild runner:
@@ -298,6 +298,11 @@ Add additionals environment variables patterns to pass vars to codebuild when ma
 
 The artifacts packaging mode set in your codebuild project. Valid values are `ZIP` or `NONE`. Defaults to `ZIP`.
 See https://docs.aws.amazon.com/codebuild/latest/APIReference/API_ProjectArtifacts.html
+
+#### `GITLAB_ARTIFACTS_DIR`
+**optional**
+
+The directory where the Gitlab-CI runner will extract the artifacts created by the codebuild pipeline. Path is relative to the runner's current dir. Defaults to `.codebuild_artifacts`.
 
 ---
 
