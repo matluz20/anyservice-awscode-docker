@@ -240,7 +240,7 @@ if [ ${WAIT_FOR_CODEBUILD} = "true" ]; then
     artifacts_s3_bucket=`echo ${artifacts_s3} | cut -d '/' -f 1`;
     artifacts_s3_key=`echo ${artifacts_s3} | cut -d '/' -f 2-`;
 
-    GITLAB_ARTIFACTS_DIR="${GITLAB_ARTIFACTS_DIR:-'.codebuild_artifacts}";
+    GITLAB_ARTIFACTS_DIR="${GITLAB_ARTIFACTS_DIR:-.codebuild_artifacts}";
     mkdir -p "${GITLAB_ARTIFACTS_DIR}";
     cd "${GITLAB_ARTIFACTS_DIR}";
 
