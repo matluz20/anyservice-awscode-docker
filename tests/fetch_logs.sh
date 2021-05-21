@@ -58,16 +58,9 @@ fetch_logs() {
     return 
   fi
 
-  # iterate on log events to display log messages only
-  # Note: base64 -d on Alpine | --decode on MacOS for `base64 decode`
-  for row in $(echo "${events}" | jq -r '@base64'); do
-    timestamp=`echo ${row} | base64 --decode | jq -j '.timestamp'`
-    ts_seconds=$((${timestamp}/1000))
-    # Note: cross platform
-    date=`date -d @${ts_seconds} +'%Y-%m-%d %H:%M:%S' 2>/dev/null || date -r ${ts_seconds} +'%Y-%m-%d %H:%M:%S'`
-    message=`echo ${row} | base64 --decode | jq -j '.message'`
-    echo "${date}   ${message}"
-  done
+  # decode and print log events (we use python to iterate over log events as bash loops are too slow)
+  echo ${log_events} | jq -c -r '.events' > events
+  python print_events.py events
 
   # we have reached the end of the stream but there might be remaining log events, so we self invoke right away
   fetch_logs
