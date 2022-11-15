@@ -80,19 +80,11 @@ version_id=$(s3_put_archive)
 echo "S3 Object version for uploaded code is: ${version_id}"
 
 
-# helper to format env vars containing the ci_env_pattern (BITBUCKET_ or CI_|GITLAB_CI_) in a space-separated list of `name=NAME,value=VALUE` elements
-ci_env() {
-  env \
-  | grep -E ${ci_env_pattern} \
-  | awk -F= '{print "name="$1 ",value="$2}' \
-  | tr "\n" " "
-};
-
 # helper to format env vars containing the ci_env_pattern (BITBUCKET_ or CI_|GITLAB_CI_) in a line-separated list `{"name":"NAME","value":"VALUE"}` elements
 ci_env_json() {
   env \
     | grep -E ${ci_env_pattern} \
-    | awk -F= '{"jq -n -c '\''.name=\"" $1 "\" | .value=\"" $2 "\"'\''" | getline ts; print ts}'
+    | jq -Rc 'split("\n") | map(split("=") | { "name": .[0], "value": .[1] }) | .[]'
 };
 
 
