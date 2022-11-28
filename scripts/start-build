@@ -6,6 +6,7 @@ if [ "${VERBOSE}" = true ]; then
 fi
 
 OPTS=$@
+SCRIPTS_DIR=${SCRIPTS_DIR:-"/usr/local/bin"}
 
 # Check for required env vars
 if [ -z "${CODEBUILD_S3_BUCKET}" ]; then
@@ -30,7 +31,7 @@ if [ -n "${AWS_ASSUME_ROLE}" ]; then
   if [ -z "${AWS_ASSUME_ROLE_DURATION}" ]; then
     AWS_ASSUME_ROLE_DURATION=3600
   fi
-  . aws_assume_role "${AWS_ASSUME_ROLE_ARN}" --duration-seconds ${AWS_ASSUME_ROLE_DURATION}
+  . ${SCRIPTS_DIR}/aws_assume_role "${AWS_ASSUME_ROLE_ARN}" --duration-seconds ${AWS_ASSUME_ROLE_DURATION}
 fi
 
 # Detect CI environment: either BITBUCKET or GITLAB_CI
@@ -58,14 +59,11 @@ WAIT_FOR_CODEBUILD=${WAIT_FOR_CODEBUILD:-true}
 
 # Build source code archive for selected commit using option -y to preserve symlinks
 CODEBUILD_CHROOT=${CODEBUILD_CHROOT:-.}
-PWD=`pwd`
-cd ${CODEBUILD_CHROOT}
-zip -r -y -q ${PWD}/code.zip .
-cd ${PWD}
+(cd ${CODEBUILD_CHROOT} && zip -r -y -q code.zip .) # stays in current directory when finished
 
 s3_put_archive() {
   aws s3api put-object \
-    --body ./code.zip \
+    --body ${CODEBUILD_CHROOT}/code.zip \
     --bucket ${CODEBUILD_S3_BUCKET} \
     --key ${CODEBUILD_S3_ARCHIVE_KEY} \
     --output text --query 'VersionId'
@@ -185,7 +183,7 @@ if [ ${WAIT_FOR_CODEBUILD} = "true" ]; then
 
     # decode and print log events (we use python to iterate over log events as bash loops are too slow)
     echo ${log_events} | jq -c -r '.events' > events
-    python3 /usr/local/bin/print_events.py events
+    python3 ${SCRIPTS_DIR}/print_events.py events
 
     # we have reached the end of the stream but there might be remaining log events, so we self invoke right away
     fetch_logs
@@ -267,12 +265,24 @@ if [ ${WAIT_FOR_CODEBUILD} = "true" ]; then
 
   # Build succeeded
   if [ ${codebuild_status} = "SUCCEEDED" ]; then
-    echo "-> Build ${start_build_id} completed successfully!";
+    echo "-> AWS CodeBuild ${start_build_id} completed successfully!";
 
   # Build failed
   else
-    echo "-> Build ${start_build_id} failed!";
-    echo "Build failure reason: ${codebuild_status}";
+    echo "-> AWS CodeBuild ${start_build_id} failed!";
+
+    # get the phase that failed
+    failed_phase=`echo ${build_result} | jq -c -r '.phases | map(select(.phaseStatus != "SUCCEEDED")) | first'`;
+    
+    # get phase info
+    failed_phase_name=`echo ${failed_phase} | jq -c -r '.phaseType'`;
+    failed_phase_status=`echo ${failed_phase} | jq -c -r '.phaseStatus'`;
+    failed_phase_error_msg=`echo ${failed_phase} | jq -c -r '.contexts[0].message'`;
+
+    echo "AWS CodeBuild failed on phase: ${failed_phase_name}";
+    echo "Phase status code: ${failed_phase_status}";
+    echo "Message: ${failed_phase_error_msg}";
+    
     exit 1;
   fi
 

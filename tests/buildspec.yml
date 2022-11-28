@@ -4,4 +4,4 @@ phases:
 
   build:
     commands:
-      - timeout 60 sh -c "until false; do echo .; sleep 15; done"
+      - timeout 600 sh -c "until false; do echo .; sleep 15; done"
