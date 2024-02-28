@@ -166,8 +166,6 @@ if [ ${WAIT_FOR_CODEBUILD} = "true" ]; then
       has_events=true
     else
       echo "Waiting for logs"
-      sleep 10
-      fetch_logs
     fi
 
     # keep previous nextForwardToken value
