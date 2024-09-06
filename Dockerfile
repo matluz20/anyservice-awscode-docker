@@ -25,5 +25,6 @@ RUN apk add --update \
 ADD scripts/ /usr/local/bin
 
 RUN chmod +x /usr/local/bin/start-build
+RUN chmod +x /usr/local/bin/stop-build
 RUN chmod +x /usr/local/bin/push-to-pipeline
 RUN chmod +x /usr/local/bin/aws_assume_role

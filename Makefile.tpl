@@ -13,4 +13,7 @@ export CODEBUILD_S3_RESULT_PATH=some/path/to/codebuild-results
 start-build:
 	$${SCRIPTS_DIR}/start-build --buildspec-override tests/buildspec.yml
 
+stop-build:
+	$${SCRIPTS_DIR}/stop-build --buildspec-override tests/buildspec.yml
+
 .PHONY: start-build

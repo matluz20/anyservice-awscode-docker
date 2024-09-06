@@ -1,0 +1,5 @@
+# This hook is used for canceled builds when they were canceled in GitLab
+default:
+  after_script:
+    - echo $CI_JOB_STATUS
+    - if [ "$CI_JOB_STATUS" == "canceled" ]; then stop-build; fi

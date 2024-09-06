@@ -1,0 +1,36 @@
+#!/bin/bash
+set -e
+
+# This script stops cobebuild when the job is canceled in gitlab
+
+if [ "${VERBOSE}" = true ]; then
+  set -x
+fi
+
+SCRIPTS_DIR=${SCRIPTS_DIR:-"/usr/local/bin"}
+
+# Extract Build id 
+BUILD_ID_FILE="_build_id"
+BUILD_ID=$(jq -r '.id' "$BUILD_ID_FILE")
+
+# Switching AWS principal
+if [ -n "${AWS_ASSUME_ROLE}" ]; then
+  AWS_ASSUME_ROLE_ARN=${AWS_ASSUME_ROLE}
+  unset AWS_ASSUME_ROLE
+  # set defaut aws assume-role session duration to 1 hour if not set
+  if [ -z "${AWS_ASSUME_ROLE_DURATION}" ]; then
+    AWS_ASSUME_ROLE_DURATION=3600
+  fi
+  . ${SCRIPTS_DIR}/aws_assume_role "${AWS_ASSUME_ROLE_ARN}" --duration-seconds ${AWS_ASSUME_ROLE_DURATION}
+fi
+
+# Stop build
+stop_build() {
+  aws codebuild stop-build --id ${BUILD_ID} 
+};
+
+# Launch stop build
+echo "Stopping build : ${BUILD_ID}";
+run_stop_build=$(stop_build);
+BUILD_STATUS=$(echo "$run_stop_build" | jq -r '.build.buildStatus')
+echo "Build status : ${BUILD_STATUS}"

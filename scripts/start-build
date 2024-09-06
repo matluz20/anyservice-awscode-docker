@@ -124,6 +124,12 @@ start_build() {
 
 # Start build and record the build id
 start_build_id=$(start_build);
+
+# Save the build id in _build_id file
+json_content=$(jq -n --arg id "$start_build_id" '{id: $id}')
+echo "$json_content" > _build_id
+
+# Print logs
 echo "-> Started build: ${start_build_id}";
 echo "Build details are available at the following url:"
 echo "https://${AWS_DEFAULT_REGION}.console.aws.amazon.com/codebuild/home?region=${AWS_DEFAULT_REGION}#/builds/${start_build_id}/view/new"
@@ -166,8 +172,6 @@ if [ ${WAIT_FOR_CODEBUILD} = "true" ]; then
       has_events=true
     else
       echo "Waiting for logs"
-      sleep 10
-      fetch_logs
     fi
 
     # keep previous nextForwardToken value
