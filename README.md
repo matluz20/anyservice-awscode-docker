@@ -306,14 +306,24 @@ The directory where the Gitlab-CI runner will extract the artifacts created by t
 
 ## After-script hook
 
-the default after-script hook is used for canceled builds when they were canceled in GitLab,
+the default after-script hook is used for canceled builds when they were canceled in GitLab. 
+
 To use it, you might include it in your .gitlab-ci.yml file in this way:
 
 ```
 include:
-    - project: 'gfx-public/docker/test-after-script'
-    file: 'after-script.yml'
+    - https://group/project/-/raw/master/after-script.yml
 ```
+The after-script called Stop-build function when the build-status gitlab passed to "canceled"
+
+This call is made in the after-script hook as follows :
+```
+- if [ "$CI_JOB_STATUS" == "canceled" ]; then stop-build; fi
+```
+
+The Stop-build function defined in the Docker image receives as input the build_id of the triggered build, coming from the 'build_id' file
+
+The function also requires: AWS_ASSUME_ROLE, which is necessary to perform the stop-build action.
 
 ---
 
