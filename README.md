@@ -305,6 +305,8 @@ See https://docs.aws.amazon.com/codebuild/latest/APIReference/API_ProjectArtifac
 The directory where the Gitlab-CI runner will extract the artifacts created by the codebuild pipeline. Path is relative to the runner's current dir. Defaults to `.codebuild_artifacts`.
 
 ## After-script hook
+**Compatible Provider**
+* GitLab
 
 the default after-script hook is used for canceled builds when they were canceled in GitLab. 
 
