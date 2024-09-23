@@ -308,7 +308,13 @@ The directory where the Gitlab-CI runner will extract the artifacts created by t
 **Compatible Provider**
 * GitLab
 
-the default after-script hook is used for canceled builds when they were canceled in GitLab. 
+GitLab 17 introduces the execution of the after-script hook for canceled jobs.
+
+See https://docs.gitlab.com/ee/update/deprecations.html?removal_milestone=17.0&breaking_only=true#after_script-keyword-will-run-for-cancelled-jobs
+ 
+We used this new feature to run a script that cancels jobs in CodeBuild when they are canceled in GitLab.
+
+To simplify the use of the after-script hook, we have set up a global after-script file that will be used in our GitLab CI files.
 
 To use it, you might include it in your .gitlab-ci.yml file in this way:
 
@@ -316,6 +322,16 @@ To use it, you might include it in your .gitlab-ci.yml file in this way:
 include:
     - https://group/project/-/raw/master/after-script.yml
 ```
+
+or
+
+```
+include:
+    - project: 'group/project'
+    - ref: master (in default)
+    - file: 'after-script.yml'
+```
+
 The after-script called Stop-build function when the build-status gitlab passed to "canceled"
 
 This call is made in the after-script hook as follows :
