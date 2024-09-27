@@ -309,8 +309,6 @@ The directory where the Gitlab-CI runner will extract the artifacts created by t
 * GitLab
 
 [GitLab 17](https://docs.gitlab.com/ee/update/deprecations.html?removal_milestone=17.0&breaking_only=true#after_script-keyword-will-run-for-cancelled-jobs) introduces the execution of the [after-script](after-script ) hook for canceled jobs.
-
-See 
  
 We use this new feature to run a script that cancels jobs in CodeBuild when they are canceled in GitLab.
 
@@ -318,9 +316,9 @@ To simplify the use of the after-script hook, you can setup a template yaml file
 
 An example of this file is provided in the examples/gitlab folder.
 
-The after_script hook provided in te example calls the stop-build script only when the CI_JOB_STATUS env variable (provided by Gitlab) equals canceled. 
+The after_script hook provided in the example calls the stop-build script only when the CI_JOB_STATUS env variable (provided by Gitlab) equals canceled. 
 
-The stop-build script reads the build_id of the current build from the _build_id file that the start-build script writes to disk.
+The stop-build script reads the build_id of the current build from the `_build_id` file that the start-build script writes to disk.
 
 ---
 
