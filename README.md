@@ -308,41 +308,19 @@ The directory where the Gitlab-CI runner will extract the artifacts created by t
 **Compatible Provider**
 * GitLab
 
-GitLab 17 introduces the execution of the after-script hook for canceled jobs.
+[GitLab 17](https://docs.gitlab.com/ee/update/deprecations.html?removal_milestone=17.0&breaking_only=true#after_script-keyword-will-run-for-cancelled-jobs) introduces the execution of the [after-script](after-script ) hook for canceled jobs.
 
-See https://docs.gitlab.com/ee/update/deprecations.html?removal_milestone=17.0&breaking_only=true#after_script-keyword-will-run-for-cancelled-jobs
+See 
  
-We used this new feature to run a script that cancels jobs in CodeBuild when they are canceled in GitLab.
+We use this new feature to run a script that cancels jobs in CodeBuild when they are canceled in GitLab.
 
-To simplify the use of the after-script hook, we have set up a global after-script file that will be used in our GitLab CI files.
+To simplify the use of the after-script hook, you can setup a template yaml file in a central repository that you can then[include in all your projects](include link to gitlab doc).
 
-To use it, you might include it in your .gitlab-ci.yml file in this way:
+An example of this file is provided in the examples/gitlab folder.
 
-```
-include:
-    - https://group/project/-/raw/master/after-script.yml
-```
+The after_script hook provided in te example calls the stop-build script only when the CI_JOB_STATUS env variable (provided by Gitlab) equals canceled.
 
-or
-
-```
-include:
-    - project: 'group/project'
-    - ref: master (in default)
-    - file: 'after-script.yml'
-```
-
-The after-script called Stop-build function when the build-status gitlab passed to "canceled"
-
-This call is made in the after-script hook as follows :
-```
-- if [ "$CI_JOB_STATUS" == "canceled" ]; then stop-build; fi
-```
-
-The Stop-build function defined in the Docker image receives as input the build_id of the triggered build, coming from the 'build_id' file
-
-The function also requires: AWS_ASSUME_ROLE, which is necessary to perform the stop-build action.
-
+The stop-build script reads the build_id of the current build from the _build_id file that the start-build script writes to disk.
 ---
 
 

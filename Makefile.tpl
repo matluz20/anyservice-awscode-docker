@@ -14,6 +14,6 @@ start-build:
 	$${SCRIPTS_DIR}/start-build --buildspec-override tests/buildspec.yml
 
 stop-build:
-	$${SCRIPTS_DIR}/stop-build --buildspec-override tests/buildspec.yml
+	$${SCRIPTS_DIR}/stop-build
 
 .PHONY: start-build
