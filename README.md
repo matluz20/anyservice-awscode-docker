@@ -314,7 +314,7 @@ See
  
 We use this new feature to run a script that cancels jobs in CodeBuild when they are canceled in GitLab.
 
-To simplify the use of the after-script hook, you can setup a template yaml file in a central repository that you can then[include in all your projects](include link to gitlab doc).
+To simplify the use of the after-script hook, you can setup a template yaml file in a central repository that you can then [include in all your projects](https://docs.gitlab.com/ee/ci/yaml/includes.html).
 
 An example of this file is provided in the examples/gitlab folder.
 
