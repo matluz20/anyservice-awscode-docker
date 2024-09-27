@@ -318,9 +318,10 @@ To simplify the use of the after-script hook, you can setup a template yaml file
 
 An example of this file is provided in the examples/gitlab folder.
 
-The after_script hook provided in te example calls the stop-build script only when the CI_JOB_STATUS env variable (provided by Gitlab) equals canceled.
+The after_script hook provided in te example calls the stop-build script only when the CI_JOB_STATUS env variable (provided by Gitlab) equals canceled. 
 
 The stop-build script reads the build_id of the current build from the _build_id file that the start-build script writes to disk.
+
 ---
 
 
