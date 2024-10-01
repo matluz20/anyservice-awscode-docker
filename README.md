@@ -322,7 +322,7 @@ The stop-build script reads the build_id of the current build from the `_build_i
 
 ---
 
-local stack
+
 
 
 
